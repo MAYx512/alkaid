@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude聊天图书馆</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: var(--scroll-thumb);
+            border-radius: 10px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--scroll-thumb-hover);
+        }
+        
+        /* Theme Variables */
+        :root {
+            --bg-gradient-from: #fef3c7;
+            --bg-gradient-via: #fecaca;
+            --bg-gradient-to: #fbcfe8;
+            --primary: #fb7185;
+            --primary-dark: #f43f5e;
+            --user-bubble: linear-gradient(to right, #fb7185, #ec4899);
+            --scroll-thumb: #fda4af;
+            --scroll-thumb-hover: #fb7185;
+        }
+        
+        .theme-pink {
+            --bg-gradient-from: #fef3c7;
+            --bg-gradient-via: #fecaca;
+            --bg-gradient-to: #fbcfe8;
+            --primary: #fb7185;
+            --primary-dark: #f43f5e;
+            --user-bubble: linear-gradient(to right, #fb7185, #ec4899);
+            --scroll-thumb: #fda4af;
+            --scroll-thumb-hover: #fb7185;
+        }
+        
+        .theme-blue {
+            --bg-gradient-from: #dbeafe;
+            --bg-gradient-via: #bfdbfe;
+            --bg-gradient-to: #93c5fd;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --user-bubble: linear-gradient(to right, #3b82f6, #2563eb);
+            --scroll-thumb: #93c5fd;
+            --scroll-thumb-hover: #60a5fa;
+        }
+        
+        .theme-green {
+            --bg-gradient-from: #d1fae5;
+            --bg-gradient-via: #a7f3d0;
+            --bg-gradient-to: #6ee7b7;
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --user-bubble: linear-gradient(to right, #10b981, #059669);
+            --scroll-thumb: #6ee7b7;
+            --scroll-thumb-hover: #34d399;
+        }
+        
+        .theme-yellow {
+            --bg-gradient-from: #fef3c7;
+            --bg-gradient-via: #fde68a;
+            --bg-gradient-to: #fcd34d;
+            --primary: #f59e0b;
+            --primary-dark: #d97706;
+            --user-bubble: linear-gradient(to right, #f59e0b, #d97706);
+            --scroll-thumb: #fcd34d;
+            --scroll-thumb-hover: #fbbf24;
+        }
+        
+        .theme-white {
+            --bg-gradient-from: #ffffff;
+            --bg-gradient-via: #f9fafb;
+            --bg-gradient-to: #f3f4f6;
+            --primary: #6b7280;
+            --primary-dark: #4b5563;
+            --user-bubble: linear-gradient(to right, #6b7280, #4b5563);
+            --scroll-thumb: #d1d5db;
+            --scroll-thumb-hover: #9ca3af;
+        }
+        
+        .theme-black {
+            --bg-gradient-from: #1f2937;
+            --bg-gradient-via: #111827;
+            --bg-gradient-to: #030712;
+            --primary: #9ca3af;
+            --primary-dark: #6b7280;
+            --user-bubble: linear-gradient(to right, #4b5563, #374151);
+            --scroll-thumb: #4b5563;
+            --scroll-thumb-hover: #6b7280;
+        }
+        
+        .theme-black .text-gray-600,
+        .theme-black .text-gray-500,
+        .theme-black .text-gray-400 {
+            color: #d1d5db !important;
+        }
+        
+        .theme-black .text-gray-800 {
+            color: #f3f4f6 !important;
+        }
+        
+        .theme-black .text-gray-700 {
+            color: #e5e7eb !important;
+        }
+        
+        .theme-black .bg-white {
+            background-color: #1f2937 !important;
+        }
+        
+        .theme-black .bg-gray-100 {
+            background-color: #374151 !important;
+        }
+        
+        .theme-black .border-gray-200 {
+            border-color: #4b5563 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen theme-pink" style="background: linear-gradient(to bottom right, var(--bg-gradient-from), var(--bg-gradient-via), var(--bg-gradient-to));">
+    <div id="app" class="p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Settings Panel -->
+            <div id="settingsPanel" class="bg-white rounded-2xl shadow-lg p-8 mb-8 fade-in">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">✨ 个性化设置 ✨</h2>
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">你的称呼</label>
+                        <input type="text" id="userName" placeholder="例如：小猫、我、用户" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0" style="focus:ring-color: var(--primary);">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Claude的称呼</label>
+                        <input type="text" id="claudeName" placeholder="例如：哥哥、Claude、助手" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-0" style="focus:ring-color: var(--primary);">
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">选择主题颜色</label>
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                        <button onclick="setTheme('pink')" class="theme-btn px-4 py-3 rounded-xl border-2 transition-all hover:scale-105" style="background: linear-gradient(to right, #fecaca, #fbcfe8); border-color: #fb7185;">
+                            <div class="text-xs font-medium text-gray-700">淡粉</div>
+                        </button>
+                        <button onclick="setTheme('blue')" class="theme-btn px-4 py-3 rounded-xl border-2 border-gray-200 transition-all hover:scale-105" style="background: linear-gradient(to right, #bfdbfe, #93c5fd);">
+                            <div class="text-xs font-medium text-gray-700">淡蓝</div>
+                        </button>
+                        <button onclick="setTheme('green')" class="theme-btn px-4 py-3 rounded-xl border-2 border-gray-200 transition-all hover:scale-105" style="background: linear-gradient(to right, #a7f3d0, #6ee7b7);">
+                            <div class="text-xs font-medium text-gray-700">淡绿</div>
+                        </button>
+                        <button onclick="setTheme('yellow')" class="theme-btn px-4 py-3 rounded-xl border-2 border-gray-200 transition-all hover:scale-105" style="background: linear-gradient(to right, #fde68a, #fcd34d);">
+                            <div class="text-xs font-medium text-gray-700">淡黄</div>
+                        </button>
+                        <button onclick="setTheme('white')" class="theme-btn px-4 py-3 rounded-xl border-2 border-gray-200 transition-all hover:scale-105" style="background: linear-gradient(to right, #ffffff, #f3f4f6);">
+                            <div class="text-xs font-medium text-gray-700">简白</div>
+                        </button>
+                        <button onclick="setTheme('black')" class="theme-btn px-4 py-3 rounded-xl border-2 border-gray-200 transition-all hover:scale-105" style="background: linear-gradient(to right, #1f2937, #030712);">
+                            <div class="text-xs font-medium text-gray-100">深黑</div>
+                        </button>
+                    </div>
+                </div>
+                <button onclick="applySettings()" class="w-full text-white px-8 py-4 rounded-xl hover:shadow-lg transition-all duration-300 transform hover:scale-105 font-medium" style="background: var(--user-bubble);">
+                    开始使用图书馆
+                </button>
+            </div>
+
+            <!-- Header -->
+            <div id="header" class="hidden text-center mb-8 fade-in">
+                <div class="flex items-center justify-center gap-3 mb-4">
+                    <svg class="w-8 h-8 fill-current" style="color: var(--primary);" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    <h1 id="mainTitle" class="text-4xl font-bold text-gray-800"></h1>
+                    <svg class="w-8 h-8 fill-current" style="color: var(--primary);" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-600">这里珍藏着每一个瞬间</p>
+                <button onclick="showSettings()" class="mt-4 text-sm px-4 py-2 rounded-lg border-2 transition-colors hover:shadow" style="color: var(--primary); border-color: var(--primary);">
+                    ⚙️ 修改设置
+                </button>
+            </div>
+
+            <!-- Upload Section -->
+            <div id="uploadSection" class="hidden bg-white rounded-2xl shadow-lg p-12 mb-8 text-center border-2 border-dashed transition-colors fade-in" style="border-color: var(--primary);">
+                <svg class="w-16 h-16 mx-auto mb-4" style="color: var(--primary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                </svg>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-3">上传聊天记录</h2>
+                <p class="text-gray-500 mb-6">把Claude导出的JSON文件拖到这里，或者点击下方按钮选择文件</p>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+                <button onclick="document.getElementById('fileInput').click()" class="text-white px-8 py-3 rounded-full hover:shadow-lg transition-all duration-300 transform hover:scale-105" style="background: var(--user-bubble);">
+                    选择文件
+                </button>
+            </div>
+
+            <!-- Search and Filter Section -->
+            <div id="searchSection" class="hidden bg-white rounded-2xl shadow-lg p-6 mb-8 fade-in">
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" id="searchInput" placeholder="搜索对话内容..." class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent" style="focus:ring-color: var(--primary);">
+                    </div>
+                    <div class="relative">
+                        <svg class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <select id="dateFilter" class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent appearance-none bg-white" style="focus:ring-color: var(--primary);">
+                            <option value="">所有日期</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="resultCount" class="mt-4 text-sm text-gray-500 text-center"></div>
+            </div>
+
+            <!-- Chat List -->
+            <div id="chatList" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+
+            <!-- Chat Detail View -->
+            <div id="chatDetail" class="hidden bg-white rounded-2xl shadow-lg fade-in">
+                <div class="sticky top-0 text-white p-6 rounded-t-2xl flex items-center justify-between z-10" style="background: var(--user-bubble);">
+                    <div>
+                        <h2 id="chatTitle" class="text-2xl font-bold mb-1"></h2>
+                        <p id="chatDate" class="text-sm opacity-90"></p>
+                    </div>
+                    <button onclick="closeChat()" class="p-2 hover:bg-white/20 rounded-full transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="chatMessages" class="p-6 max-h-[600px] overflow-y-auto chat-scroll space-y-4"></div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-16">
+                <p class="text-gray-400 text-lg">没有找到符合条件的对话</p>
+                <p class="text-gray-400 text-sm mt-2">试试调整搜索条件</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allChats = [];
+        let filteredChats = [];
+        let currentChat = null;
+        let settings = {
+            userName: '用户',
+            claudeName: 'Claude',
+            theme: 'pink'
+        };
+
+        function setTheme(themeName) {
+            settings.theme = themeName;
+            document.body.className = `min-h-screen theme-${themeName}`;
+            
+            // Update all theme buttons
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('ring-4', 'ring-offset-2');
+                btn.style.borderColor = '#e5e7eb';
+            });
+            event.target.closest('.theme-btn').classList.add('ring-4', 'ring-offset-2');
+        }
+
+        function showSettings() {
+            document.getElementById('settingsPanel').classList.remove('hidden');
+            document.getElementById('header').classList.add('hidden');
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('chatList').classList.add('hidden');
+            document.getElementById('chatDetail').classList.add('hidden');
+            
+            document.getElementById('userName').value = settings.userName;
+            document.getElementById('claudeName').value = settings.claudeName;
+        }
+
+        function applySettings() {
+            const userName = document.getElementById('userName').value.trim();
+            const claudeName = document.getElementById('claudeName').value.trim();
+            
+            if (!userName || !claudeName) {
+                alert('请填写完整的称呼设置');
+                return;
+            }
+            
+            settings.userName = userName;
+            settings.claudeName = claudeName;
+            
+            document.getElementById('settingsPanel').classList.add('hidden');
+            document.getElementById('header').classList.remove('hidden');
+            document.getElementById('uploadSection').classList.remove('hidden');
+            
+            document.getElementById('mainTitle').textContent = `${settings.userName}和${settings.claudeName}的聊天图书馆`;
+        }
+
+        function isValidChat(chat) {
+            if (!chat.messages || chat.messages.length === 0) {
+                return false;
+            }
+
+            const hasValidMessage = chat.messages.some(msg => 
+                msg.text && msg.text.trim().length > 0 && msg.text.toLowerCase() !== 'undefined'
+            );
+
+            if (!hasValidMessage) {
+                return false;
+            }
+
+            if (chat.messages.length < 2) {
+                return false;
+            }
+
+            return true;
+        }
+
+        function parseClaudeExport(jsonData) {
+            try {
+                const parsed = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
+                const chatList = [];
+
+                if (Array.isArray(parsed)) {
+                    parsed.forEach(chat => {
+                        if (chat.chat_messages) {
+                            const processedChat = {
+                                id: chat.uuid || Date.now() + Math.random(),
+                                name: chat.name || '未命名对话',
+                                created_at: chat.created_at,
+                                updated_at: chat.updated_at,
+                                messages: chat.chat_messages.map(msg => ({
+                                    sender: msg.sender,
+                                    text: msg.text,
+                                    created_at: msg.created_at
+                                }))
+                            };
+                            
+                            if (isValidChat(processedChat)) {
+                                chatList.push(processedChat);
+                            }
+                        }
+                    });
+                } else if (parsed.chat_messages) {
+                    const processedChat = {
+                        id: parsed.uuid || Date.now(),
+                        name: parsed.name || '未命名对话',
+                        created_at: parsed.created_at,
+                        updated_at: parsed.updated_at,
+                        messages: parsed.chat_messages.map(msg => ({
+                            sender: msg.sender,
+                            text: msg.text,
+                            created_at: msg.created_at
+                        }))
+                    };
+                    
+                    if (isValidChat(processedChat)) {
+                        chatList.push(processedChat);
+                    }
+                }
+
+                return chatList;
+            } catch (error) {
+                console.error('解析失败:', error);
+                alert('文件格式有误，请确保上传的是Claude导出的JSON文件');
+                return [];
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatDateOnly(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        function renderChatList(chats) {
+            const chatListEl = document.getElementById('chatList');
+            const emptyStateEl = document.getElementById('emptyState');
+            
+            if (chats.length === 0) {
+                chatListEl.classList.add('hidden');
+                emptyStateEl.classList.remove('hidden');
+                return;
+            }
+
+            emptyStateEl.classList.add('hidden');
+            chatListEl.classList.remove('hidden');
+            
+            chatListEl.innerHTML = chats.map(chat => {
+                const firstValidMessage = chat.messages.find(msg => msg.text && msg.text.trim().length > 0);
+                const previewText = firstValidMessage ? firstValidMessage.text.substring(0, 100) : '...';
+                
+                return `
+                    <div onclick="openChat('${chat.id}')" class="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 p-6 cursor-pointer border-2 border-transparent hover:border-current transform hover:-translate-y-1 fade-in" style="hover:border-color: var(--primary);">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2 line-clamp-2">${chat.name}</h3>
+                        <p class="text-sm text-gray-500 mb-3">${formatDate(chat.updated_at)}</p>
+                        <p class="text-sm text-gray-600 line-clamp-3">${previewText}...</p>
+                        <div class="mt-4 text-xs" style="color: var(--primary);">共 ${chat.messages.length} 条消息</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openChat(chatId) {
+            currentChat = allChats.find(c => c.id === chatId);
+            if (!currentChat) return;
+
+            document.getElementById('chatList').classList.add('hidden');
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('chatDetail').classList.remove('hidden');
+            
+            document.getElementById('chatTitle').textContent = currentChat.name;
+            document.getElementById('chatDate').textContent = formatDate(currentChat.updated_at);
+            
+            const messagesEl = document.getElementById('chatMessages');
+            messagesEl.innerHTML = currentChat.messages.map(msg => `
+                <div class="flex ${msg.sender === 'human' ? 'justify-end' : 'justify-start'}">
+                    <div class="max-w-[80%] rounded-2xl px-6 py-4 ${msg.sender === 'human' ? 'text-white' : 'bg-gray-100 text-gray-800'}" style="${msg.sender === 'human' ? 'background: var(--user-bubble);' : ''}">
+                        <div class="text-xs opacity-70 mb-2">
+                            ${msg.sender === 'human' ? settings.userName : settings.claudeName} · ${formatDate(msg.created_at)}
+                        </div>
+                        <div class="whitespace-pre-wrap break-words">${msg.text}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            messagesEl.scrollTop = 0;
+        }
+
+        function closeChat() {
+            document.getElementById('chatDetail').classList.add('hidden');
+            document.getElementById('chatList').classList.remove('hidden');
+            document.getElementById('searchSection').classList.remove('hidden');
+            currentChat = null;
+        }
+
+        function filterChats() {
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            const selectedDate = document.getElementById('dateFilter').value;
+
+            filteredChats = allChats.filter(chat => {
+                const matchesSearch = !searchQuery || 
+                    chat.name.toLowerCase().includes(searchQuery) ||
+                    chat.messages.some(msg => msg.text && msg.text.toLowerCase().includes(searchQuery));
+                
+                const matchesDate = !selectedDate || 
+                    formatDateOnly(chat.updated_at) === selectedDate;
+
+                return matchesSearch && matchesDate;
+            });
+
+            document.getElementById('resultCount').textContent = `找到 ${filteredChats.length} 段对话`;
+            renderChatList(filteredChats);
+        }
+
+        function populateDateFilter() {
+            const dates = [...new Set(allChats.map(chat => formatDateOnly(chat.updated_at)))].sort((a, b) => new Date(b) - new Date(a));
+            const dateFilterEl = document.getElementById('dateFilter');
+            dateFilterEl.innerHTML = '<option value="">所有日期</option>' + 
+                dates.map(date => `<option value="${date}">${date}</option>`).join('');
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const jsonData = event.target.result;
+                allChats = parseClaudeExport(jsonData);
+                
+                if (allChats.length > 0) {
+                    filteredChats = [...allChats];
+                    document.getElementById('uploadSection').classList.add('hidden');
+                    document.getElementById('searchSection').classList.remove('hidden');
+                    populateDateFilter();
+                    filterChats();
+                } else {
+                    alert('没有找到有效的对话记录，请检查JSON文件是否正确');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        document.getElementById('searchInput').addEventListener('input', filterChats);
+        document.getElementById('dateFilter').addEventListener('change', filterChats);
+
+        // Drag and drop support
+        const uploadSection = document.getElementById('uploadSection');
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.json')) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const jsonData = event.target.result;
+                    allChats = parseClaudeExport(jsonData);
+                    
+                    if (allChats.length > 0) {
+                        filteredChats = [...allChats];
+                        document.getElementById('uploadSection').classList.add('hidden');
+                        document.getElementById('searchSection').classList.remove('hidden');
+                        populateDateFilter();
+                        filterChats();
+                    } else {
+                        alert('没有找到有效的对话记录，请检查JSON文件是否正确');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+    </script>
+</body>
+</html>

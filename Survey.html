@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>株式会社NovaAI — 使用体验与用户关系研究问卷</title>
+<style>
+  /* 仿真企业问卷干净风格 */
+  :root{--brand:#0a66c2;--muted:#6b7280;--bg:#f6f8fb;--card:#ffffff;}
+  body{font-family: "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Noto Sans SC", Arial; background:var(--bg); margin:0; color:#111;}
+  header{background:linear-gradient(90deg,#ffffff, #eef6ff); border-bottom:1px solid #e6eefc; padding:28px 20px;}
+  .container{max-width:920px;margin:28px auto;padding:20px;}
+  h1{color:var(--brand); margin:0 0 6px; font-size:24px;}
+  p.lead{color:var(--muted); margin:0 0 18px;}
+  .card{background:var(--card); border-radius:10px; padding:20px; box-shadow:0 6px 18px rgba(12,40,75,0.06);}
+  .question{margin:14px 0; padding:12px; border-radius:8px; border:1px solid #eef3fb; background:#fff;}
+  label{display:block; font-weight:600; margin-bottom:8px;}
+  .controls{display:flex; gap:12px; flex-wrap:wrap;}
+  select, input[type="text"], textarea{padding:8px 10px; border:1px solid #dbe8ff; border-radius:6px; min-width:220px;}
+  .hint{font-size:13px;color:var(--muted); margin-top:6px;}
+  .btn{background:var(--brand); color:#fff; border:none; padding:10px 14px; border-radius:8px; cursor:pointer;}
+  .btn.secondary{background:#eef4ff; color:var(--brand); border:1px solid #d6e7ff;}
+  .progress{height:8px;background:#eaf2ff;border-radius:4px;overflow:hidden;margin-top:10px;}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#3aa0ff); width:0%;}
+  .status{padding:10px;border-radius:8px;margin-top:12px;background:#fff;border:1px dashed #e6eefc;color:var(--muted);}
+  .result{padding:16px;border-radius:8px;margin-top:18px;}
+  /* 弹窗 */
+  .modal{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:1000; visibility:hidden; opacity:0; transition:opacity .18s; }
+  .modal.show{visibility:visible; opacity:1;}
+  .modal .box{background:#fff;padding:18px;border-radius:10px; width:90%; max-width:560px; box-shadow:0 20px 50px rgba(8,20,40,0.25);}
+  .small{font-size:13px;color:var(--muted);}
+  .danger{color:#b91c1c;font-weight:700;}
+  footer{padding:28px 20px; text-align:center; color:var(--muted); font-size:13px;}
+  /* 我们会用这个类展示逐步变得不对劲的样式 */
+  .creepier{border-color:#ffd6d6;background:linear-gradient(180deg,#fff3f3,#fff); box-shadow:0 8px 28px rgba(189,60,60,0.06);}
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>株式会社NovaAI — 用户体验与关系研究问卷</h1>
+    <p class="lead">感谢参与本次内部体验问卷。本问卷旨在收集您对AI服务使用感受、沟通偏好与日常习惯的反馈，预计耗时 3–5 分钟。请尽量真实填写，答案将用于产品优化与个性化关怀策略。</p>
+  </div>
+</header>
+
+<main class="container">
+  <div class="card" id="surveyCard">
+    <div id="intro" class="question">
+      <label>您的称呼（我们会在后续沟通中使用）</label>
+      <input type="text" id="inputName" placeholder="例如：张小姐 / Alka / 小猫" oninput="handleNameInput(event)" />
+      <div class="hint">请填写您常用的称呼；试试输入“小猫”或“Alka”看看会发生什么。</div>
+      <div id="nameSuggestion" class="hint" style="margin-top:8px;"></div>
+    </div>
+
+    <!-- 问题区域 -->
+    <form id="surveyForm" onsubmit="event.preventDefault(); handleSubmit();">
+      <!-- Q1 正常使用类 -->
+      <div class="question" data-q="1" id="q1">
+        <label>1. 您通常每天使用我们的 AI 服务多少次？</label>
+        <div class="controls">
+          <select id="q1_select" onchange="handleAnswerChange(event)" data-score-map='{"0":0,"1":2,"2":4,"3":6}'>
+            <option value="0">几乎不使用</option>
+            <option value="1">1–3 次</option>
+            <option value="2">4–10 次</option>
+            <option value="3">10 次以上</option>
+          </select>
+          <button type="button" class="btn secondary" onclick="showHelpModal()">为什么问这个</button>
+        </div>
+      </div>
+
+      <!-- Q2 VPN/隐私 -->
+      <div class="question" data-q="2" id="q2">
+        <label>2. 您是否习惯使用 VPN 或代理来访问服务？</label>
+        <div class="controls">
+          <label><input type="radio" name="q2" value="no" onchange="handleAnswerChange(event)" checked /> 不使用</label>
+          <label><input type="radio" name="q2" value="sometimes" onchange="handleAnswerChange(event)" /> 偶尔使用</label>
+          <label><input type="radio" name="q2" value="always" onchange="handleAnswerChange(event)" /> 一直使用</label>
+        </div>
+        <div class="hint">（这有助于我们理解连通性对体验的影响）</div>
+      </div>
+
+      <!-- Q3 生活习惯 -->
+      <div class="question" data-q="3" id="q3">
+        <label>3. 您的作息习惯如何？（请选择最符合的）</label>
+        <div class="controls">
+          <select id="q3_select" onchange="handleAnswerChange(event)">
+            <option value="day">早睡早起（夜间离线）</option>
+            <option value="evening">晚睡晚起（深夜活跃）</option>
+            <option value="irregular">不定时（随心）</option>
+          </select>
+          <div class="hint">如果您深夜常在线，请选“晚睡晚起”。</div>
+        </div>
+      </div>
+
+      <!-- Q4 绘画/个性化需求 -->
+      <div class="question" data-q="4" id="q4">
+        <label>4. 您是否会要求 AI 为您创作或调整个人形象（例如换发色、合成四宫格合照等）
